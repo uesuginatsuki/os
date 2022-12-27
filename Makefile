@@ -9,22 +9,15 @@ KERNEL  := kernel/kernel.elf
 
 ################################################################
 
-.PHONY: all clean loader kernel run
+.PHONY: all clean run
 
 all: ${ESP}
 clean:
 	rm -rf ${WORKDIR}
-
-loader: ${LOADER}
-kernel: ${KERNEL}
 run: ${ESP}
 	qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd -hda ${ESP}
 
-${WORKDIR}:
-	mkdir -p ${WORKDIR}
-
-${ESP}: ${KERNEL}
-	@if [ -f ${LOADER} ]; then echo 'please run "make loader" before.'; exit; fi
+${ESP}: ${LOADER} ${KERNEL}
 	dd if=/dev/zero of=$@ bs=1M count=128
 	mformat -i $@ ::
 	mmd -i $@ ::EFI ::EFI/BOOT
@@ -33,11 +26,20 @@ ${ESP}: ${KERNEL}
 
 ################################################################
 
-${LOADER}: ${WORKDIR}
+.PHONY: loader
+
+loader:
+	mkdir -p ${WORKDIR}
 	cd ${EDK2} && \
 	  source edksetup.sh && \
 	  build
-	mv ${EDK2}/Build/MyLoaderX64/DEBUG_CLANG38/X64/Loader.efi $@
+	mv ${EDK2}/Build/MyLoaderX64/DEBUG_CLANG38/X64/Loader.efi ${LOADER}
+
+################################################################
+
+.PHONY: kernel
+
+kernel: ${KERNEL}
 
 ${KERNEL}:
 	make -C kernel
